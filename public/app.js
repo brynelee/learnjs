@@ -77,7 +77,8 @@ learnjs.problemView = function(data){
 learnjs.showView = function(hash){
 	var routes = {
 		'#problem': learnjs.problemView, //route for the problem-view
-		'':	learnjs.landingView //route for the landing-view
+        '#':		learnjs.landingView, //route for the landing-view
+		'':			learnjs.landingView //route for the landing-view
 	};
 	var hashParts = hash.split('-');
 	var viewFn = routes[hashParts[0]];
