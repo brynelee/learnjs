@@ -9,6 +9,8 @@
     <script src='https://code.jquery.com/jquery-2.1.4.min.js'></script>
     <script src='vendor.js'></script>
     <script src='app.js'></script>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <meta name="google-signin-client_id" content="820391754375-3g80jkmp1j4n2ide7dbu33q2u4v4q4n5.apps.googleusercontent.com"/>
     <style type="text/css" media="all">
       body { margin-top: 30px; }
       .templates { display: none; }
@@ -37,6 +39,10 @@
         background: #666;
       }
       .nav-container a { color: white; }
+      .navbar-padding {
+        padding-top: 7px;
+        display: inline-block;
+      }
     </style>
   </head>
   <body>
@@ -47,6 +53,11 @@
           <li><a class="text-lg" href="#">LearnJS</a></li>
           <li><a href="#problem-1">Start</a></li>
         </ul>
+        <div class="four columns">
+          <span class="navbar-padding u-pull-right">
+            <span class="g-signin2" data-onsuccess="googleSignIn"></span>
+          </span>
+        </div>
       </div>
 
       <div class='view-container container'>
@@ -86,7 +97,7 @@
         <li class="skip-btn">
           <a>Skip This Problem</a>
         </li>
-        
+
       </div>
 
     </div>
