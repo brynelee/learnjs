@@ -16,6 +16,62 @@ learnjs.problems = [
 	}
 ];
 
+learnjs.sendDbRequest = function(req, retry) {
+    var promise = new $.Deferred();
+    req.on('error', function (error) {
+        if (error.code === "CredentialsError") {
+            learnjs.identity.then(function(identity){
+                return identity.refresh().then(function(){
+                    return retry();
+                }, function () {
+                    promise.reject(resp);
+                });
+            });
+        } else {
+            promise.reject(error);
+        }
+    });
+    req.on('success', function (resp) {
+        promise.resolve(resp.data);
+    });
+    req.send();
+    return promise;
+}
+
+learnjs.saveAnswer = function　(problemId, answer){
+    return learnjs.identity.then(function (identity) {
+        var db = new AWS.DynamoDB.DocumentClient();
+        var item = {
+            TableName: 'learnjs',
+            Item: {
+                userId: identity.id,
+                problemId: problemId,
+                answer: answer
+            }
+        };
+        return learnjs.sendDbRequest(db.put(item), function () {
+            return learnjs.saveAnswer(problemId, answer);
+        });
+    });
+};
+
+
+learnjs.fetchAnswer = function(problemId){
+    return learnjs.identity.then(function (identity) {
+        var db = new AWS.DynamoDB.DocumentClient();
+        var item = {
+            TableName: 'learnjs',
+            Key: {
+                userId: identity.id,
+                problemId: problemId
+            }
+        };
+        return learnjs.sendDbRequest(db.get(item), function(){
+            return learnjs.fetchAnswer(problemId);
+        })
+    });
+};
+
 learnjs.applyObject = function(obj, elem) {
 	for (var key in obj) {
 		elem.find('[data-name="' + key + '"]').text(obj[key]);
@@ -78,7 +134,11 @@ learnjs.problemView = function(data){
 	}
 
 	// for the processing of the answer part in the view
-
+	learnjs.fetchAnswer(problemNumber).then(function(data){
+		if(data.Item){
+			answer.val(data.Item.answer);
+		}
+	});
 
 	//for buttonItem part processing logic
 	if(problemNumber < learnjs.problems.length){
@@ -174,44 +234,5 @@ learnjs.profileView = function() {
     });
     return view;
 }
-
-learnjs.sendDbRequest = function(req, retry) {
-	var promise = new $.Deferred();
-	req.on('error', function (error) {
-		if (error.code === "CredentialsError") {
-			learnjs.identity.then(function(identity){
-				return identity.refresh().then(function(){
-					return retry();
-				}, function () {
-					promise.reject(resp);
-                });
-			});
-		} else {
-			promise.reject(error);
-		}
-    });
-	req.on('success', function (resp) {
-		promise.resolve(resp.data);
-    });
-	req.send();
-	return promise;
-}
-
-learnjs.saveAnswer = function(problemId, answer){
-	return learnjs.identity.then(function (identity) {
-		var db = new AWS.Dynamo.DocumentClient();
-		var item = {
-			TableName: 'learnjs',
-			Item: {
-				userId: identity.id,
-				problemId: problemId,
-				answer: answer
-			}
-		};
-		return learnjs.sendDbRequest(db.put(item), function () {
-			return learnjs.saveAnswer(problemId, answer);
-        });
-    });
-};
 
 
