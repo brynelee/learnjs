@@ -16,6 +16,58 @@ learnjs.problems = [
 	}
 ];
 
+learnjs.sendAwsRequest = function(req, retry) {
+    var promise = new $.Deferred();
+    req.on('error', function (error) {
+        if (error.code === "CredentialsError") {
+            learnjs.identity.then(function(identity) {
+                return identity.refresh().then(function() {
+                    return retry();
+                }, function() {
+                    promise.reject(resp);
+                });
+            });
+        } else {
+            promise.reject(error);
+        }
+    });
+    req.on('success', function(resp) {
+        promise.resolve(resp.data);
+    });
+    req.send();
+    return promise;
+}
+
+
+learnjs.popularAnswers = function(problemId){
+	return learnjs.identity.then(function(){
+		var lambda = new AWS.Lambda();
+		var params = {
+			FunctionName: 'popularAnswers',
+			Payload: JSON.stringify({problemNumber: problemId})
+		};
+		return learnjs.sendAwsRequest(lambda.invoke(params), function(){
+			return learnjs.popularAnswers(problemId);
+		});
+	});
+}
+
+
+/*
+learnjs.popularAnswers = function(problemId){
+    return learnjs.identity.then(function(){
+        var lambda = new AWS.Lambda();
+        var params = {
+            FunctionName: 'echo',
+            Payload: JSON.stringify("I'm xiaodong li")
+        };
+        return learnjs.sendAwsRequest(lambda.invoke(params), function(){
+            return learnjs.popularAnswers(problemId);
+        });
+    });
+}
+*/
+
 learnjs.sendDbRequest = function(req, retry) {
     var promise = new $.Deferred();
     req.on('error', function (error) {
@@ -49,7 +101,7 @@ learnjs.saveAnswer = function　(problemId, answer){
                 answer: answer
             }
         };
-        return learnjs.sendDbRequest(db.put(item), function () {
+        return learnjs.sendAwsRequest(db.put(item), function () {
             return learnjs.saveAnswer(problemId, answer);
         });
     });
@@ -66,11 +118,26 @@ learnjs.fetchAnswer = function(problemId){
                 problemId: problemId
             }
         };
-        return learnjs.sendDbRequest(db.get(item), function(){
+        return learnjs.sendAwsRequest(db.get(item), function(){
             return learnjs.fetchAnswer(problemId);
         })
     });
 };
+
+learnjs.countAnswers = function(problemId) {
+    return learnjs.identity.then(function(identity) {
+        var db = new AWS.DynamoDB.DocumentClient();
+        var params = {
+            TableName: 'learnjs',
+            Select: 'COUNT',
+            FilterExpression: 'problemId = :problemId',
+            ExpressionAttributeValues: {':problemId': problemId}
+        };
+        return learnjs.sendAwsRequest(db.scan(params), function() {
+            return learnjs.countAnswers(problemId);
+        })
+    });
+}
 
 learnjs.applyObject = function(obj, elem) {
 	for (var key in obj) {
@@ -115,6 +182,7 @@ learnjs.problemView = function(data){
 	var problemData = learnjs.problems[problemNumber - 1];
 	var resultFlash = view.find('.result');
     var answer = view.find('.answer');
+    var popular = view.find('.popular-answer');
 
 	function checkAnswer() {
 
@@ -137,6 +205,12 @@ learnjs.problemView = function(data){
 	learnjs.fetchAnswer(problemNumber).then(function(data){
 		if(data.Item){
 			answer.val(data.Item.answer);
+		}
+	});
+
+	learnjs.popularAnswers(problemNumber).then(function(data){
+		if(data){
+			popular.text(data.Payload);
 		}
 	});
 
